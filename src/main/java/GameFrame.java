@@ -1,9 +1,10 @@
 import javax.swing.*;
+import java.awt.*;
 
 public class GameFrame extends JFrame {
 
     public GameFrame() {
-        this.add(new Board());
+        this.add(new Game());
         this.setTitle("Snake");
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         this.setResizable(false);

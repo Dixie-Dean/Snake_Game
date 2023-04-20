@@ -1,41 +1,49 @@
+import auxiliary.State;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.Random;
 
-public class Board extends JPanel implements ActionListener {
+public class Game extends JPanel implements ActionListener {
 
-    static final int SCREEN_WIDTH = 600;
-    static final int SCREEN_HEIGHT = 600;
-    static final int UNIT_SIZE = 25;
-    static final int GAME_UNITS = (SCREEN_WIDTH * SCREEN_HEIGHT) / UNIT_SIZE;
-    static final int DELAY = 75;
-    final int x[] = new int[GAME_UNITS];
-    final int y[] = new int[GAME_UNITS];
-    int bodyParts = 6;
-    int applesEaten;
-    int appleX;
-    int appleY;
+    public static State state;
+    public static final int SCREEN_WIDTH = 600;
+    public static final int SCREEN_HEIGHT = 600;
+    public static final int UNIT_SIZE = 25;
+    public static final int GAME_UNITS = (SCREEN_WIDTH * SCREEN_HEIGHT) / UNIT_SIZE;
+    public static final int DELAY = 75;
+    public static final int[] x = new int[GAME_UNITS];
+    public static final int[] y = new int[GAME_UNITS];
+    public static int bodyParts = 6;
+    public static int applesEaten;
+    public static int appleX;
+    public static int appleY;
     char direction = 'R';
-    boolean running = false;
-    Timer timer;
-    Random random;
+    public static Timer timer;
+    private static Random random;
+    private final MenuRenderer menuRenderer = new MenuRenderer();
+    private final GameOverRender gameOver = new GameOverRender();
+    private final GameRenderer gameRenderer = new GameRenderer();
 
-    public Board() {
+    public Game() {
         random = new Random();
         this.setPreferredSize(new Dimension(SCREEN_WIDTH, SCREEN_HEIGHT));
         this.setBackground(Color.BLACK);
         this.setFocusable(true);
         this.addKeyListener(new MyKeyAdapter());
-        startGame();
+        this.addMouseListener(new MouseInput());
+        launch();
     }
 
-    public void startGame() {
+    public void launch() {
+        state = State.MENU;
         addApplePosition();
-        running = true;
+
         timer = new Timer(DELAY, this);
         timer.start();
     }
+
 
     public void paintComponent(Graphics graphics) {
         super.paintComponent(graphics);
@@ -43,40 +51,16 @@ public class Board extends JPanel implements ActionListener {
     }
 
     public void draw(Graphics graphics) {
-//        for (int i = 0; i < SCREEN_WIDTH / UNIT_SIZE; i++) {
-//            graphics.drawLine(i * UNIT_SIZE, 0, i * UNIT_SIZE, SCREEN_HEIGHT);
-//            graphics.drawLine(0, i * UNIT_SIZE, SCREEN_WIDTH, i * UNIT_SIZE);
-//        }
-
-        if(running) {
-            graphics.setColor(Color.RED);
-            graphics.fillOval(appleX, appleY, UNIT_SIZE, UNIT_SIZE);
-
-            for (int i = 0; i < bodyParts; i++) {
-                if (i == 0) {
-                    graphics.setColor(Color.GREEN);
-                    graphics.fillRect(x[i], y[i], UNIT_SIZE, UNIT_SIZE);
-                } else {
-                    graphics.setColor(new Color(45, 150, 0));
-                    graphics.fillRect(x[i], y[i], UNIT_SIZE, UNIT_SIZE);
-                }
-            }
-
-            graphics.setColor(Color.ORANGE);
-            graphics.setFont(new Font("Times New Roman", Font.BOLD, 20));
-            FontMetrics metrics = getFontMetrics(graphics.getFont());
-            graphics.drawString(
-                    "Score: " + applesEaten,
-                    (SCREEN_WIDTH - metrics.stringWidth("Score: " + applesEaten)) - 5,
-                    metrics.getFont().getSize()
-            );
-
+        if(state == State.GAME) {
+            gameRenderer.render(graphics);
+        } else if (state == State.MENU) {
+            menuRenderer.render(graphics);
         } else {
-            gameOver(graphics);
+            gameOver.render(graphics);
         }
     }
 
-    public void addApplePosition() {
+    public static void addApplePosition() {
         appleX = random.nextInt(SCREEN_WIDTH / UNIT_SIZE) * UNIT_SIZE;
         appleY = random.nextInt(SCREEN_HEIGHT / UNIT_SIZE) * UNIT_SIZE;
     }
@@ -114,55 +98,35 @@ public class Board extends JPanel implements ActionListener {
     public void checkCollisions() {
         for (int i = bodyParts; i > 0 ; i--) {
             if ((x[0] == x[i]) && (y[0] == y[i])) {
-                running = false;
+                state = State.LOST;
                 break;
             }
         }
 
         if (x[0] < 0) {
-            running = false;
+            state = State.LOST;
         }
 
         if (x[0] > SCREEN_WIDTH) {
-            running = false;
+            state = State.LOST;
         }
 
         if (y[0] < 0) {
-            running = false;
+            state = State.LOST;
         }
 
         if (y[0] > SCREEN_HEIGHT) {
-            running = false;
+            state = State.LOST;
         }
 
-        if (!running) {
+        if (state == auxiliary.State.MENU || state == auxiliary.State.LOST) {
             timer.stop();
         }
     }
 
-    public void gameOver(Graphics graphics) {
-        graphics.setColor(Color.ORANGE);
-        graphics.setFont(new Font("Times New Roman", Font.BOLD, 40));
-        FontMetrics metricsGO = getFontMetrics(graphics.getFont());
-        graphics.drawString(
-                "Game Over",
-                (SCREEN_WIDTH - metricsGO.stringWidth("Game Over")) / 2,
-                (SCREEN_HEIGHT / 2) - 30
-        );
-
-        graphics.setColor(Color.ORANGE);
-        graphics.setFont(new Font("Times New Roman", Font.BOLD, 30));
-        FontMetrics metricsScore = getFontMetrics(graphics.getFont());
-        graphics.drawString(
-                "Your Score: " + applesEaten,
-                (SCREEN_WIDTH - metricsScore.stringWidth("Your Score: " + applesEaten)) / 2,
-                (SCREEN_HEIGHT / 2) + 30
-        );
-    }
-
     @Override
     public void actionPerformed(ActionEvent e) {
-        if (running) {
+        if (state == State.GAME) {
             move();
             checkApple();
             checkCollisions();
